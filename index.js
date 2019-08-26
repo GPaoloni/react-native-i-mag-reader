@@ -4,14 +4,14 @@ import { Buffer } from 'buffer';
 //global.Buffer = Buffer;
 const { RNSppMagReader } = NativeModules;
 
-const BluetoothSerial = NativeModules.BluetoothSerial
+const RNSppIMagReader = NativeModules.RNSppIMagReader
 
 /**
  * Listen for available events
  * @param  {String} eventName Name of event one of connectionSuccess, connectionLost, data, rawData
  * @param  {Function} handler Event handler
  */
-BluetoothSerial.on = (eventName, handler) => {
+RNSppIMagReader.on = (eventName, handler) => {
   DeviceEventEmitter.addListener(eventName, handler)
 }
 
@@ -20,7 +20,7 @@ BluetoothSerial.on = (eventName, handler) => {
  * @param  {String} eventName Name of event one of connectionSuccess, connectionLost, data, rawData
  * @param  {Function} handler Event handler
  */
-BluetoothSerial.removeListener = (eventName, handler) => {
+RNSppIMagReader.removeListener = (eventName, handler) => {
   DeviceEventEmitter.removeListener(eventName, handler)
 }
 
@@ -30,12 +30,12 @@ BluetoothSerial.removeListener = (eventName, handler) => {
  * @param  {Buffer|String} data
  * @return {Promise<Boolean>}
  */
-BluetoothSerial.write = (data) => {
+RNSppIMagReader.write = (data) => {
   if (typeof data === 'string') {
     data = new Buffer(data)
   }
-  return BluetoothSerial.writeToDevice(data.toString('base64'))
+  return RNSppIMagReader.writeToDevice(data.toString('base64'))
 }
 
 export default RNSppMagReader;
-//export default BluetoothSerial;
+//export default RNSppIMagReader;

@@ -30,7 +30,7 @@ import javax.annotation.Nullable;
 import static com.sppmagreaderlibrary.RNSppMagReaderPackage.TAG;
 
 @SuppressWarnings("unused")
-public class RCTBluetoothSerialModule extends ReactContextBaseJavaModule implements ActivityEventListener, LifecycleEventListener {
+public class RNSppIMagReaderModule extends ReactContextBaseJavaModule implements ActivityEventListener, LifecycleEventListener {
 
     // Debugging
     private static final boolean D = true;
@@ -49,8 +49,9 @@ public class RCTBluetoothSerialModule extends ReactContextBaseJavaModule impleme
     private static final int REQUEST_PAIR_DEVICE = 2;
     // Members
     private BluetoothAdapter mBluetoothAdapter;
-    private RCTBluetoothSerialService mBluetoothService;
+    private RNSppIMagReaderService mBluetoothService;
     private ReactApplicationContext mReactContext;
+    private SppBluetoothModule mSppBluetoothModule;
 
     private StringBuffer mBuffer = new StringBuffer();
 
@@ -61,7 +62,7 @@ public class RCTBluetoothSerialModule extends ReactContextBaseJavaModule impleme
     private Promise mPairDevicePromise;
     private String delimiter = "";
 
-    public RCTBluetoothSerialModule(ReactApplicationContext reactContext) {
+    public RNSppIMagReaderModule(ReactApplicationContext reactContext) {
         super(reactContext);
 
         if (D) Log.d(TAG, "Bluetooth module started");
@@ -73,7 +74,7 @@ public class RCTBluetoothSerialModule extends ReactContextBaseJavaModule impleme
         }
 
         if (mBluetoothService == null) {
-            mBluetoothService = new RCTBluetoothSerialService(this);
+            mBluetoothService = new RNSppIMagReaderService(this);
         }
 
         if (mBluetoothAdapter != null && mBluetoothAdapter.isEnabled()) {
@@ -85,11 +86,14 @@ public class RCTBluetoothSerialModule extends ReactContextBaseJavaModule impleme
         mReactContext.addActivityEventListener(this);
         mReactContext.addLifecycleEventListener(this);
         registerBluetoothStateReceiver();
+
+        mSppBluetoothModule = new SppBluetoothModule(mReactContext);
+        mSppBluetoothModule.creteSppListener(mReactContext.getApplicationContext());
     }
 
     @Override
     public String getName() {
-        return "RCTBluetoothSerial";
+        return "RNSppIMagReader";
     }
 
     @Override
@@ -137,6 +141,7 @@ public class RCTBluetoothSerialModule extends ReactContextBaseJavaModule impleme
 
     @Override
     public void onHostDestroy() {
+        mSppBluetoothModule.destroySppListener();
         if (D) Log.d(TAG, "Host destroy");
         mBluetoothService.stop();
     }
@@ -197,6 +202,7 @@ public class RCTBluetoothSerialModule extends ReactContextBaseJavaModule impleme
      */
     public void disable(Promise promise) {
         if (mBluetoothAdapter != null && mBluetoothAdapter.isEnabled()) {
+            mSppBluetoothModule.disconnectSppListener();
             mBluetoothAdapter.disable();
         }
         promise.resolve(true);
@@ -327,8 +333,8 @@ public class RCTBluetoothSerialModule extends ReactContextBaseJavaModule impleme
         if (mBluetoothAdapter != null) {
             BluetoothDevice device = mBluetoothAdapter.getRemoteDevice(id);
             if (device != null) {
-                mBluetoothService.connect(device);
-                SppBluetoothModule.creteSppListenerOnConection(device);
+                //mBluetoothService.connect(device);
+                mSppBluetoothModule.connectSppListener(device);
             } else {
                 promise.reject(new Exception("Could not connect to " + id));
             }
@@ -342,6 +348,7 @@ public class RCTBluetoothSerialModule extends ReactContextBaseJavaModule impleme
      * Disconnect from device
      */
     public void disconnect(Promise promise) {
+        mSppBluetoothModule.disconnectSppListener();
         mBluetoothService.stop();
         promise.resolve(true);
     }
@@ -351,7 +358,9 @@ public class RCTBluetoothSerialModule extends ReactContextBaseJavaModule impleme
      * Check if device is connected
      */
     public void isConnected(Promise promise) {
-        promise.resolve(mBluetoothService.isConnected());
+        promise.resolve(
+            mBluetoothService.isConnected() || mSppBluetoothModule.isHandlerConnected()
+        );
     }
 
     /*********************/

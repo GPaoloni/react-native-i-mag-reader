@@ -1,24 +1,27 @@
 package com.sppmagreaderlibrary;
 
-import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
+import android.content.Context;
 import android.util.Log;
 
-import com.facebook.react.bridge.Callback;
+import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.ReactApplicationContext;
-import com.facebook.react.bridge.ReactContextBaseJavaModule;
-import com.facebook.react.bridge.ReactMethod;
+import com.facebook.react.bridge.WritableMap;
+import com.facebook.react.modules.core.DeviceEventManagerModule;
 import com.facebook.react.uimanager.IllegalViewOperationException;
+
 import com.imagpay.Settings;
 import com.imagpay.enums.CardDetected;
 import com.imagpay.enums.PinPadEvent;
 import com.imagpay.spp.SppHandler;
 import com.imagpay.spp.SppListener;
 
+import javax.annotation.Nullable;
+
 import static com.sppmagreaderlibrary.RNSppMagReaderPackage.TAG;
 
 
-public class SppBluetoothModule extends ReactContextBaseJavaModule implements SppListener {
+public class SppBluetoothModule implements SppListener {
     private SppHandler _handler;
     private Settings _settings;
 
@@ -26,114 +29,73 @@ public class SppBluetoothModule extends ReactContextBaseJavaModule implements Sp
     private String magPan = "";
     private String magExpDate = "";
 
-    private BluetoothAdapter mBluetoothAdapter;
     private ReactApplicationContext mReactContext;
 
+    private static final String CONN_SUCCESS = "connectionSuccess";
+    private static final String CONN_FAILED = "connectionFailed";
+    private static final String CONN_LOST = "connectionLost";
+    private static final String CARD_READ = "cardRead";
+
     public SppBluetoothModule(ReactApplicationContext reactContext) {
-        super(reactContext); //required by React Native
-
         mReactContext = reactContext;
-
-        if (mBluetoothAdapter == null) {
-            mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-        }
     }
 
-    @Override
-    //getName is required to define the name of the module represented in JavaScript
-    public String getName() {
-        return "SppBluetooth";
-    }
-
-    @ReactMethod
-    public void sayHi(Callback errorCallback, Callback successCallback) {
+    public boolean creteSppListener(Context context) {
         try {
-            System.out.println("Greetings from Java");
-            successCallback.invoke("Callback: Greetings from SPP");
-        } catch (IllegalViewOperationException e) {
-            errorCallback.invoke(e.getMessage());
-        }
-    }
-
-    public boolean creteSppListenerOnConection(BluetoothDevice device) {
-        Log.d(TAG, "Function called");
-
-        try {
-            Log.d(TAG, "Inside try block");
-            _handler = new SppHandler(mReactContext.getApplicationContext());
+            _handler = new SppHandler(context);
             _settings = new Settings(_handler);
             _handler.setShowAPDU(true);
             _handler.setBlueTooth(true);// set bluetooth flag
             _handler.setDebug(true);
             _handler.addSppListener(this);
-
-            String name = device.getName();
-
-            if (_handler.connect(device)) {
-                Log.d(TAG, "Connected to " + name);
-            } else {
-                Log.d(TAG, "Failed");
-            }
         } catch (IllegalViewOperationException e) {
             Log.e(TAG, "Error creating SPP handler");
             return false;
         }
 
-        Log.d(TAG, "Module created");
         return true;
     }
 
-
-    @ReactMethod
-    public void createSppListener (Callback errorCallback, Callback successCallback) {
-        Log.d(TAG, "Function called");
-
-        try {
-            Log.d(TAG, "Inside try block");
-            _handler = new SppHandler(mReactContext.getApplicationContext());
-            _settings = new Settings(_handler);
-            _handler.setShowAPDU(true);
-            _handler.setBlueTooth(true);// set bluetooth flag
-            _handler.setDebug(true);
-            _handler.addSppListener(this);
-
-
-
-            BluetoothDevice device = mBluetoothAdapter.getRemoteDevice("60:96:81:10:94:7D");
+    public boolean connectSppListener(BluetoothDevice device) {
+        if (_handler.isConnected()) {
+            disconnectSppListener();
+            Log.d(TAG, "Already connected");
+            // _handler.close();
+        } //else {
+        if (_handler.connect(device)) {
             String name = device.getName();
-
-            if (_handler.connect(device)) {
-                Log.d(TAG, "Connected to " + name);
-            } else {
-                Log.d(TAG, "Failed");
-            }
-
-            successCallback.invoke("Spp handler created. Device name is " + name);
-        } catch (IllegalViewOperationException e) {
-            errorCallback.invoke(e.getMessage());
+            Log.d(TAG, "Connected to " + name);
+        } else {
+            sendEvent(CONN_FAILED, null);
+            return false;
         }
 
-        Log.d(TAG, "Module created");
+        return true;
     }
 
-    @ReactMethod
-    public void readMagAllDatas (Callback errorCallback, Callback successCallback) {
+    public boolean disconnectSppListener() {
         try {
-            String magAllDatas = _handler.getMagAllData();
-            Log.d(TAG, "MagAllData: " + magAllDatas);
-            successCallback.invoke("Callback: " + magAllDatas);
+            if (_handler.isConnected()) {
+                _handler.close();
+            }
         } catch (IllegalViewOperationException e) {
-            errorCallback.invoke(e.getMessage());
+            Log.e(TAG, "Error closing SPP handler");
+            return false;
         }
+
+        return true;
     }
 
-    @ReactMethod
-    public void destroySppListener (Callback errorCallback, Callback successCallback) {
+    public boolean isHandlerConnected() {
+        return _handler.isConnected();
+    }
+
+    public void destroySppListener () {
         try {
             _handler.onDestroy();
-            successCallback.invoke("Callback: spp handler destroyed");
+            Log.d(TAG, "Spp handler destroyed");
         } catch (IllegalViewOperationException e) {
-            errorCallback.invoke(e.getMessage());
+            Log.d(TAG, e.getMessage());
         }
     }
 
@@ -154,35 +116,23 @@ public class SppBluetoothModule extends ReactContextBaseJavaModule implements Sp
             magName = holderName;
             magPan = _handler.getMagPan();
             magExpDate = _handler.getMagExpDate();
-//            Log.d(TAG, "Mag PAN:" + magPan);
-//            Log.d(TAG, "Track1:" + _handler.getTrack1Data());
-//            Log.d(TAG, "Track2:" + _handler.getTrack2Data());
-//            Log.d(TAG, "Track3:" + _handler.getTrack3Data());
-//            Log.d(TAG, "ExpDate:" + magExpDate);
-//            Log.d(TAG, magPan);
-//            Log.d(TAG, magName);
-//            Log.d(TAG, magExpDate);
-            Log.d(TAG, "magPan: " + magPan);
-            Log.d(TAG, "magName: " + magName);
-            Log.d(TAG, "magExpDate: " + magExpDate);
+            WritableMap params = Arguments.createMap();
+            params.putString("message", magPan + '^' + magName + '^' + magExpDate);
+            sendEvent(CARD_READ, params);
         }
 
     }
 
     @Override
     public void onConnected() {
+        sendEvent(CONN_SUCCESS, null);
         Log.d(TAG, "connect successful......");
     }
 
     @Override
     public void onDisconnect() {
+        sendEvent(CONN_LOST, null);
         Log.d(TAG, "disconnect......");
-        try {
-            _handler.onDestroy();
-         Log.d(TAG, "Callback: spp handler destroyed");
-        } catch (IllegalViewOperationException e) {
-            Log.e(TAG, "Error destroying SPP handler");
-        }
     }
 
     @Override
@@ -194,7 +144,7 @@ public class SppBluetoothModule extends ReactContextBaseJavaModule implements Sp
 
     @Override
     public void onParseData(String data) {
-        Log.d(TAG, "parseData(16) <== " + data);
+        Log.d(TAG, "parseData(16)");// <== " + data);
     }
 
     @Override
@@ -213,5 +163,14 @@ public class SppBluetoothModule extends ReactContextBaseJavaModule implements Sp
     @Override
     public void onFinishedDiscovery() {
         Log.d(TAG, "Finished Discovery.....");
+    }
+
+    private void sendEvent(String eventName, @Nullable WritableMap params) {
+        if (mReactContext.hasActiveCatalystInstance()) {
+            Log.d(TAG, "Sending event: " + eventName);
+            mReactContext
+                    .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
+                    .emit(eventName, params);
+        }
     }
 }

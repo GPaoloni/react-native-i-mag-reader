@@ -20,7 +20,7 @@ import static com.sppmagreaderlibrary.RNSppMagReaderPackage.TAG;
  * This code was based on the Android SDK BluetoothChat Sample
  * $ANDROID_SDK/samples/android-17/BluetoothChat
  */
-class RCTBluetoothSerialService {
+class RNSppIMagReaderService {
     // Debugging
     private static final boolean D = true;
 
@@ -31,7 +31,7 @@ class RCTBluetoothSerialService {
     private BluetoothAdapter mAdapter;
     private ConnectThread mConnectThread;
     private ConnectedThread mConnectedThread;
-    private RCTBluetoothSerialModule mModule;
+    private RNSppIMagReaderModule mModule;
     private String mState;
 
     // Constants that indicate the current connection state
@@ -40,10 +40,10 @@ class RCTBluetoothSerialService {
     private static final String STATE_CONNECTED = "connected";  // now connected to a remote device
 
     /**
-     * Constructor. Prepares a new RCTBluetoothSerialModule session.
+     * Constructor. Prepares a new RNSppIMagReaderModule session.
      * @param module Module which handles service events
      */
-    RCTBluetoothSerialService(RCTBluetoothSerialModule module) {
+    RNSppIMagReaderService(RNSppIMagReaderModule module) {
         mAdapter = BluetoothAdapter.getDefaultAdapter();
         mState = STATE_NONE;
         mModule = module;
@@ -155,7 +155,7 @@ class RCTBluetoothSerialService {
      */
     private void connectionFailed() {
         mModule.onConnectionFailed("Unable to connect to device"); // Send a failure message
-        RCTBluetoothSerialService.this.stop(); // Start the service over to restart listening mode
+        RNSppIMagReaderService.this.stop(); // Start the service over to restart listening mode
     }
 
     /**
@@ -163,7 +163,7 @@ class RCTBluetoothSerialService {
      */
     private void connectionLost() {
         mModule.onConnectionLost("Device connection was lost");  // Send a failure message
-        RCTBluetoothSerialService.this.stop(); // Start the service over to restart listening mode
+        RNSppIMagReaderService.this.stop(); // Start the service over to restart listening mode
     }
 
     /**
@@ -248,7 +248,7 @@ class RCTBluetoothSerialService {
             }
 
             // Reset the ConnectThread because we're done
-            synchronized (RCTBluetoothSerialService.this) {
+            synchronized (RNSppIMagReaderService.this) {
                 mConnectThread = null;
             }
 
@@ -310,7 +310,7 @@ class RCTBluetoothSerialService {
                     Log.e(TAG, "disconnected", e);
                     mModule.onError(e);
                     connectionLost();
-                    RCTBluetoothSerialService.this.stop(); // Start the service over to restart listening mode
+                    RNSppIMagReaderService.this.stop(); // Start the service over to restart listening mode
                     break;
                 }
             }
